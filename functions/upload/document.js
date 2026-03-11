@@ -1,5 +1,5 @@
-import { errorHandling, telemetryData } from "../../utils/middleware";
-import { createKVAdapter } from "../../kv-adapter.js";
+import { errorHandling, telemetryData } from "../utils/middleware";
+import { createKVAdapter } from "../kv-adapter.js";
 
 export async function onRequestPost(context) {
     const { request, env } = context;
