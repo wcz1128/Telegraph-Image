@@ -1,4 +1,4 @@
-import { createKVAdapter } from "../../../../kv-adapter.js";
+import { createKVAdapter } from "../../../kv-adapter.js";
 
 export async function onRequest(context) {
     const { params, env } = context;
