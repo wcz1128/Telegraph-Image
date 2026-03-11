@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文档上传 - Telegraph Image</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 500px;
+            width: 100%;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .upload-area {
+            border: 3px dashed #ddd;
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #fafafa;
+        }
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #e8edff;
+        }
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        .upload-text {
+            color: #666;
+            font-size: 16px;
+        }
+        .upload-hint {
+            color: #999;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        #fileInput {
+            display: none;
+        }
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+        .btn-upload {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin-top: 20px;
+        }
+        .btn-upload:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        .btn-upload:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-back {
+            background: #f0f0f0;
+            color: #333;
+            margin-top: 10px;
+        }
+        .btn-back:hover {
+            background: #e0e0e0;
+        }
+        .progress {
+            display: none;
+            margin-top: 20px;
+        }
+        .progress-bar {
+            height: 8px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s;
+        }
+        .result {
+            display: none;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f0f9ff;
+            border-radius: 8px;
+            border: 1px solid #bae6fd;
+        }
+        .result-title {
+            font-weight: 600;
+            color: #0369a1;
+            margin-bottom: 10px;
+        }
+        .result-url {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .result-url input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .btn-copy {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn-copy:hover {
+            background: #5568d3;
+        }
+        .info-box {
+            background: #fef3c7;
+            border: 1px solid #fbbf24;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #92400e;
+        }
+        .info-box strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+        .file-name {
+            display: none;
+            margin-top: 15px;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 6px;
+            font-size: 14px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📄 文档模式上传</h1>
+        <p class="subtitle">保留完整 EXIF 信息的文件上传</p>
+
+        <div class="info-box">
+            <strong>✨ 文档模式特点：</strong>
+            • 保留完整 EXIF 信息（拍摄参数、GPS等）<br>
+            • 不压缩图片，保持原始质量<br>
+            • 支持最大 50MB 文件<br>
+            • 适合需要保留照片信息的场景
+        </div>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📁</div>
+            <div class="upload-text">点击或拖拽文件到这里</div>
+            <div class="upload-hint">支持图片、音频、视频、文档</div>
+        </div>
+
+        <input type="file" id="fileInput">
+        <div class="file-name" id="fileName"></div>
+
+        <button class="btn btn-upload" id="uploadBtn" disabled>上传文件</button>
+        <button class="btn btn-back" onclick="location.href='/'">返回普通上传</button>
+
+        <div class="progress" id="progress">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+        </div>
+
+        <div class="result" id="result">
+            <div class="result-title">✅ 上传成功！</div>
+            <div class="result-url">
+                <input type="text" id="resultUrl" readonly>
+                <button class="btn-copy" onclick="copyUrl()">复制</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const fileName = document.getElementById('fileName');
+        const progress = document.getElementById('progress');
+        const progressFill = document.getElementById('progressFill');
+        const result = document.getElementById('result');
+        const resultUrl = document.getElementById('resultUrl');
+
+        let selectedFile = null;
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            selectedFile = file;
+            fileName.textContent = `已选择: ${file.name} (${formatSize(file.size)})`;
+            fileName.style.display = 'block';
+            uploadBtn.disabled = false;
+        }
+
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        uploadBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            uploadBtn.disabled = true;
+            progress.style.display = 'block';
+            result.style.display = 'none';
+
+            try {
+                progressFill.style.width = '30%';
+
+                const response = await fetch('/upload/document', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                progressFill.style.width = '100%';
+
+                if (!response.ok) {
+                    throw new Error('上传失败');
+                }
+
+                const data = await response.json();
+
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                const url = window.location.origin + data[0].src;
+                resultUrl.value = url;
+                result.style.display = 'block';
+
+                // 3秒后隐藏进度条
+                setTimeout(() => {
+                    progress.style.display = 'none';
+                }, 500);
+
+            } catch (error) {
+                alert('上传失败: ' + error.message);
+                progress.style.display = 'none';
+            } finally {
+                uploadBtn.disabled = false;
+            }
+        });
+
+        function copyUrl() {
+            resultUrl.select();
+            document.execCommand('copy');
+            alert('已复制到剪贴板！');
+        }
+    </script>
+</body>
+</html>

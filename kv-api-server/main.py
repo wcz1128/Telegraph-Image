@@ -3,7 +3,6 @@ KV API Server - Python + Redis
 提供兼容 Cloudflare KV 的 HTTP API 接口
 """
 import json
-import hashlib
 import os
 import uuid
 from typing import Optional, Any
@@ -66,7 +65,6 @@ async def get_redis() -> Redis:
             port=REDIS_PORT,
             password=REDIS_PASSWORD,
             db=REDIS_DB,
-            ssl=REDIS_SSL,
             decode_responses=True
         )
     return redis_pool
@@ -101,24 +99,91 @@ def strip_prefix(key: str) -> str:
     return key
 
 
-def encode_cursor(data: dict) -> str:
-    """编码游标"""
-    return hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()[:16]
-
-
-def decode_cursor(cursor: Optional[str]) -> Optional[dict]:
-    """简单游标处理 (实际项目中应该用更安全的方式)"""
-    # 这里简化处理，实际应该存储游标信息到 Redis
-    # 为了演示，我们返回 None，游标功能将在实际实现中用 Redis 存储游标信息
-    return None
-
-
 # ============== KV API 接口 ==============
+# 注意：路由顺序很重要，更具体的路由要放在前面
 
 @app.get("/health")
 async def health_check():
     """健康检查"""
     return {"status": "ok", "redis": "connected"}
+
+
+# /kv/list 必须在 /kv/{key:path} 之前，否则会被 /kv/{key:path} 捕获
+@app.get("/kv/list")
+async def list_kv(
+    limit: int = 100,
+    cursor: Optional[str] = None,
+    prefix: Optional[str] = None,
+    x_api_key: str = Header(..., alias="X-API-Key")
+):
+    """
+    列出 KV 键 (分页)
+
+    兼容: env.img_url.list({ limit, cursor, prefix })
+    """
+    await verify_api_key(x_api_key)
+
+    # 参数验证
+    if limit <= 0:
+        limit = 100
+    if limit > 1000:
+        limit = 1000
+
+    client = await get_redis()
+
+    # 构建搜索模式
+    search_pattern = f"{KEY_PREFIX}{prefix or ''}*"
+
+    # 使用 SCAN 获取匹配的键
+    all_keys = []
+    async for key in client.scan_iter(match=search_pattern, count=100):
+        all_keys.append(strip_prefix(key))
+
+    # 排序（保持一致性）
+    all_keys.sort()
+
+    # 处理游标分页
+    start_idx = 0
+    if cursor:
+        # 从 Redis 获取游标位置
+        cursor_data = await client.get(f"cursor:{cursor}")
+        if cursor_data:
+            start_idx = int(json.loads(cursor_data).get("offset", 0))
+
+    # 获取分页数据
+    keys = all_keys[start_idx:start_idx + limit]
+
+    # 获取每个键的完整数据
+    keys_data = []
+    for key in keys:
+        redis_key = make_redis_key(key)
+        data = await client.get(redis_key)
+        if data:
+            record = KVRecord.from_json(data)
+            keys_data.append({
+                "name": key,
+                "metadata": record.metadata
+            })
+
+    # 判断是否还有更多数据
+    list_complete = len(all_keys) <= start_idx + limit
+
+    # 生成新的游标
+    next_cursor = None
+    if not list_complete:
+        next_cursor = str(uuid.uuid4())[:16]
+        # 存储游标位置（设置 1 小时过期）
+        await client.setex(
+            f"cursor:{next_cursor}",
+            3600,
+            json.dumps({"offset": start_idx + limit})
+        )
+
+    return KVListResponse(
+        keys=keys_data,
+        list_complete=list_complete,
+        cursor=next_cursor
+    )
 
 
 @app.put("/kv/{key:path}")
@@ -213,83 +278,6 @@ async def delete_kv(
     result = await client.delete(redis_key)
 
     return {"success": True, "deleted": result > 0}
-
-
-@app.get("/kv/list")
-async def list_kv(
-    limit: int = 100,
-    cursor: Optional[str] = None,
-    prefix: Optional[str] = None,
-    x_api_key: str = Header(..., alias="X-API-Key")
-):
-    """
-    列出 KV 键 (分页)
-
-    兼容: env.img_url.list({ limit, cursor, prefix })
-    """
-    await verify_api_key(x_api_key)
-
-    # 参数验证
-    if limit <= 0:
-        limit = 100
-    if limit > 1000:
-        limit = 1000
-
-    client = await get_redis()
-
-    # 构建搜索模式
-    search_pattern = f"{KEY_PREFIX}{prefix or ''}*"
-
-    # 使用 SCAN 获取匹配的键
-    all_keys = []
-    async for key in client.scan_iter(match=search_pattern, count=100):
-        all_keys.append(strip_prefix(key))
-
-    # 排序（保持一致性）
-    all_keys.sort()
-
-    # 处理游标分页
-    start_idx = 0
-    if cursor:
-        # 从 Redis 获取游标位置
-        cursor_data = await client.get(f"cursor:{cursor}")
-        if cursor_data:
-            start_idx = int(json.loads(cursor_data).get("offset", 0))
-
-    # 获取分页数据
-    keys = all_keys[start_idx:start_idx + limit]
-
-    # 获取每个键的完整数据
-    keys_data = []
-    for key in keys:
-        redis_key = make_redis_key(key)
-        data = await client.get(redis_key)
-        if data:
-            record = KVRecord.from_json(data)
-            keys_data.append({
-                "name": key,
-                "metadata": record.metadata
-            })
-
-    # 判断是否还有更多数据
-    list_complete = len(all_keys) <= start_idx + limit
-
-    # 生成新的游标
-    next_cursor = None
-    if not list_complete:
-        next_cursor = str(uuid.uuid4())[:16]
-        # 存储游标位置（设置 1 小时过期）
-        await client.setex(
-            f"cursor:{next_cursor}",
-            3600,
-            json.dumps({"offset": start_idx + limit})
-        )
-
-    return KVListResponse(
-        keys=keys_data,
-        list_complete=list_complete,
-        cursor=next_cursor
-    )
 
 
 @app.on_event("startup")
