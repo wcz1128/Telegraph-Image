@@ -1,4 +1,5 @@
 import { errorHandling, telemetryData } from "./utils/middleware";
+import { createKVAdapter } from "../kv-adapter.js";
 
 export async function onRequestPost(context) {
     const { request, env } = context;
@@ -50,8 +51,9 @@ export async function onRequestPost(context) {
         }
 
         // 将文件信息保存到 KV 存储
-        if (env.img_url) {
-            await env.img_url.put(`${fileId}.${fileExtension}`, "", {
+        const kv = createKVAdapter(env);
+        if (kv.isAvailable()) {
+            await kv.put(`${fileId}.${fileExtension}`, "", {
                 metadata: {
                     TimeStamp: Date.now(),
                     ListType: "None",

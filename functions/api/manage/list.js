@@ -1,5 +1,8 @@
+import { createKVAdapter } from "../../kv-adapter.js";
+
 export async function onRequest(context) {
   const { request, env } = context;
+  const kv = createKVAdapter(env);
   const url = new URL(request.url);
 
   const raw = url.searchParams.get("limit");
@@ -9,7 +12,7 @@ export async function onRequest(context) {
 
   const cursor = url.searchParams.get("cursor") || undefined;
   const prefix = url.searchParams.get("prefix") || undefined;
-  const value = await env.img_url.list({ limit, cursor, prefix });
+  const value = await kv.list({ limit, cursor, prefix });
 
   return new Response(JSON.stringify(value), {
     headers: { "Content-Type": "application/json" }

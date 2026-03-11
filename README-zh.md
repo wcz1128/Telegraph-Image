@@ -37,6 +37,22 @@
 | `TG_Bot_Token`   | `123468:AAxxxGKrn5`        | 从[@BotFather](https://t.me/BotFather)获取的Telegram Bot Token。                        |
 | `TG_Chat_ID`     | `-1234567`                 | 频道的ID，确保TG Bot是该频道或群组的管理员。 |
 
+### 使用自建 KV API（可选）
+
+如果你想使用自己的 KV 存储而不是 Cloudflare KV，可以部署自建的 KV API 服务器。
+
+**设置步骤：**
+
+1. 在你的服务器上部署 KV API 服务器（参见 `kv-api-server/` 目录）
+2. 在 Cloudflare Pages 中添加以下环境变量：
+
+| 环境变量        | 示例值                    | 说明                                                                                   |
+|-----------------|---------------------------|----------------------------------------------------------------------------------------|
+| `KV_API_URL`     | `https://your-kv-api.com`  | 你的自建 KV API 服务器地址。                                                           |
+| `KV_API_KEY`     | `your-secret-api-key`      | 用于认证的 KV API 密钥。                                                               |
+
+**注意：** 当设置了 `KV_API_URL` 和 `KV_API_KEY` 时，应用将使用你的自建 KV API 而不是 Cloudflare KV。这可以绕过 Cloudflare KV 免费版的限制（每天 1000 次写入）。
+
 ## 如何部署
 
 ### 提前准备

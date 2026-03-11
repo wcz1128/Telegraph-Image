@@ -1,3 +1,5 @@
+import { createKVAdapter } from "../../../kv-adapter.js";
+
 export async function onRequest(context) {
     // Contents of context object
     const {
@@ -10,7 +12,9 @@ export async function onRequest(context) {
     } = context;
     console.log(env)
     console.log(params.id)
-    await env.img_url.delete(params.id);
+
+    const kv = createKVAdapter(env);
+    await kv.delete(params.id);
     const info = JSON.stringify(params.id);
     return new Response(info);
 

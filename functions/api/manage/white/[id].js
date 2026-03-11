@@ -1,3 +1,5 @@
+import { createKVAdapter } from "../../../../kv-adapter.js";
+
 export async function onRequest(context) {
     // Contents of context object
     const {
@@ -10,13 +12,15 @@ export async function onRequest(context) {
     } = context;
     console.log(env)
     console.log(params.id)
+
+    const kv = createKVAdapter(env);
     //read the metadata
-    const value = await env.img_url.getWithMetadata(params.id);
+    const value = await kv.getWithMetadata(params.id);
     console.log(value)
     //"metadata":{"TimeStamp":19876541,"ListType":"None","rating_label":"None"}
     //change the metadata
     value.metadata.ListType = "White"
-    await env.img_url.put(params.id,"",{metadata: value.metadata});
+    await kv.put(params.id,"",{metadata: value.metadata});
     const info = JSON.stringify(value.metadata);
     return new Response(info);
 

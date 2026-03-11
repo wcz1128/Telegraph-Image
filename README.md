@@ -37,6 +37,22 @@ Finally, go to the Cloudflare Pages backend to set the relevant environment vari
 | `TG_Bot_Token`      | `123468:AAxxxGKrn5`        | Telegram Bot Token obtained from [@BotFather](https://t.me/BotFather).                |
 | `TG_Chat_ID`        | `-1234567`                 | Channel ID, ensure the TG Bot is an administrator of the channel or group.           |
 
+### Using Self-hosted KV API (Optional)
+
+If you want to use your own KV storage instead of Cloudflare KV, you can deploy a self-hosted KV API server.
+
+**Setup Steps:**
+
+1. Deploy the KV API server on your server (see `kv-api-server/` directory)
+2. Add the following environment variables to your Cloudflare Pages:
+
+| Environment Variable | Example Value              | Description                                                                            |
+|---------------------|---------------------------|----------------------------------------------------------------------------------------|
+| `KV_API_URL`        | `https://your-kv-api.com`  | Your self-hosted KV API server URL.                                                   |
+| `KV_API_KEY`        | `your-secret-api-key`      | API key for authenticating with your KV API server.                                   |
+
+**Note:** When `KV_API_URL` and `KV_API_KEY` are set, the application will use your self-hosted KV API instead of Cloudflare KV. This allows you to bypass Cloudflare KV's free tier limitations (1000 writes/day).
+
 ## How to Deploy
 
 ### Preparation

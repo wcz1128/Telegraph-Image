@@ -1,3 +1,5 @@
+import { createKVAdapter } from "../kv-adapter.js";
+
 export async function onRequest(context) {
     const {
         request,
@@ -5,6 +7,7 @@ export async function onRequest(context) {
         params,
     } = context;
 
+    const kv = createKVAdapter(env);
     const url = new URL(request.url);
     let fileUrl = 'https://telegra.ph/' + url.pathname + url.search
     if (url.pathname.length > 39) { // Path length > 39 indicates file uploaded via Telegram Bot API
@@ -43,13 +46,13 @@ export async function onRequest(context) {
     }
 
     // Check if KV storage is available
-    if (!env.img_url) {
+    if (!kv.isAvailable()) {
         console.log("KV storage not available, returning image directly");
         return response;  // Directly return image response, terminate execution
     }
 
     // The following code executes only if KV is available
-    let record = await env.img_url.getWithMetadata(params.id);
+    let record = await kv.getWithMetadata(params.id);
     if (!record || !record.metadata) {
         // Initialize metadata if it doesn't exist
         console.log("Metadata not found, initializing...");
@@ -63,7 +66,7 @@ export async function onRequest(context) {
                 fileSize: 0,
             }
         };
-        await env.img_url.put(params.id, "", { metadata: record.metadata });
+        await kv.put(params.id, "", { metadata: record.metadata });
     }
 
     const metadata = {
@@ -107,7 +110,7 @@ export async function onRequest(context) {
 
                     if (moderateData.rating_label === "adult") {
                         console.log("Content marked as adult, saving metadata and redirecting");
-                        await env.img_url.put(params.id, "", { metadata });
+                        await kv.put(params.id, "", { metadata });
                         return Response.redirect(`${url.origin}/block-img.html`, 302);
                     }
                 }
@@ -121,7 +124,7 @@ export async function onRequest(context) {
     // Only save metadata if content is not adult content
     // Adult content cases are already handled above and will not reach this point
     console.log("Saving metadata");
-    await env.img_url.put(params.id, "", { metadata });
+    await kv.put(params.id, "", { metadata });
 
     // Return file content
     return response;

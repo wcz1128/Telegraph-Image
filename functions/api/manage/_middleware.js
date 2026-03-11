@@ -70,9 +70,10 @@ async function errorHandling(context) {
   function authentication(context) {
     //context.env.BASIC_USER="admin"
     //context.env.BASIC_PASS="admin"
-    //check if the env variables Disable_Dashboard are set
-    if (typeof context.env.img_url == "undefined" || context.env.img_url == null || context.env.img_url == "") {
-        return new Response('Dashboard is disabled. Please bind a KV namespace to use this feature.', { status: 200 });
+    //check if KV storage is available (Cloudflare KV or self-hosted KV API)
+    const hasKV = (context.env.img_url) || (context.env.KV_API_URL && context.env.KV_API_KEY);
+    if (!hasKV) {
+        return new Response('Dashboard is disabled. Please bind a KV namespace or configure KV_API_URL to use this feature.', { status: 200 });
     }
 
     console.log(context.env.BASIC_USER)
